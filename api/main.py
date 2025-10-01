@@ -268,6 +268,28 @@ async def _startup_start_worker():
         logger.info("RUN_WORKER_IN_PROCESS not enabled — not starting worker in-process.")
         return
 
+    # SAFETY: Register LiveKit plugin modules on the MAIN THREAD before importing worker entrypoint.
+    # This prevents RuntimeError: "Plugins must be registered on the main thread".
+    try:
+        logger.info("Pre-loading LiveKit plugin modules on main thread...")
+        # Attempt to import the plugins your agents file needs.
+        # If a plugin package is not installed this will raise ImportError which we catch and log.
+        import importlib
+
+        for mod in (
+            "livekit.plugins.cartesia",
+            "livekit.plugins.deepgram",
+            "livekit.plugins.openai",
+            "livekit.plugins.silero",
+        ):
+            try:
+                importlib.import_module(mod)
+                logger.info("Imported plugin module: %s", mod)
+            except Exception as e:
+                logger.warning("Could not import plugin %s on main thread: %s", mod, e)
+    except Exception as exc:
+        logger.exception("Unexpected error while pre-loading plugins: %s", exc)
+
     # Safety: ensure uvicorn configured with single worker in start command (--workers 1)
     logger.info("RUN_WORKER_IN_PROCESS enabled — starting background worker thread.")
     _worker_stop = False
@@ -275,6 +297,7 @@ async def _startup_start_worker():
         _worker_thread = threading.Thread(target=_run_agent_worker_loop, name="agent-worker-thread", daemon=True)
         _worker_thread.start()
         logger.info("Agent worker thread started.")
+
 
 @app.on_event("shutdown")
 async def _shutdown_stop_worker():

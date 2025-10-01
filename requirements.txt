@@ -9,21 +9,24 @@ PyYAML
 
 # LiveKit core + agents
 livekit
+
 livekit-agents
-livekit-api
-
-# LiveKit plugins (Deepgram plugin for agents)
-livekit-plugins-deepgram
-
-# Voice/AI libraries & SDKs
+#Plugin packages — try these names; some plugins live under livekit.plugins.* namespace
+# Note: some of these may be provided by the livekit distribution or by vendor SDKs
 cartesia
-deepgram-sdk
-silero
-silero-vad
-
-# LLM / provider SDKs
-groq
+deepgram
 openai
+silero
 
-# Helpers / async libs
+# Voice / SDK helpers
+deepgram-sdk
+
+# LLM / adapter
+
+
+
+groq
+
+
+# Utilities
 aiohttp
