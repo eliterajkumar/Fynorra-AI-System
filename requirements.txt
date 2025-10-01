@@ -1,3 +1,4 @@
+# Web & API
 fastapi
 uvicorn
 httpx
@@ -6,27 +7,15 @@ redis
 PyJWT
 pydantic
 PyYAML
-
-# LiveKit core + agents
+aiohttp
 livekit
 
 livekit-agents
-#Plugin packages — try these names; some plugins live under livekit.plugins.* namespace
-# Note: some of these may be provided by the livekit distribution or by vendor SDKs
-cartesia
-deepgram
-openai
-silero
 
-# Voice / SDK helpers
+cartesia
+
 deepgram-sdk
 
-# LLM / adapter
-
-
-
+silero-vad
 groq
-
-
-# Utilities
-aiohttp
+typing-extensions
