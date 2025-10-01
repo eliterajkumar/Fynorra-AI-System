@@ -1,21 +1,9 @@
-# Web & API
 fastapi
 uvicorn
-httpx
 python-dotenv
 redis
-PyJWT
-pydantic
-PyYAML
-aiohttp
-livekit
-
+httpx
+pyjwt
 livekit-agents
-
-cartesia
-
 deepgram-sdk
-
-silero-vad
-groq
-typing-extensions
+# plus any SDKs you use: cartesia, openai etc.

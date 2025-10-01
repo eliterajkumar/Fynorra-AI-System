@@ -1,11 +1,7 @@
-# agents/restaurant.py
 from __future__ import annotations
-
 import logging
 from dataclasses import dataclass, field
-from typing import Annotated, Optional, Dict, List, Tuple, Union
-
-# LLM adapter (may be heavy)
+from typing import Annotated, Optional
 from agents.adapters.groq_llm import GroqLLM
 
 import yaml
@@ -16,15 +12,24 @@ from livekit.agents import JobContext, WorkerOptions, cli
 from livekit.agents.llm import function_tool
 from livekit.agents.voice import Agent, AgentSession, RunContext
 from livekit.agents.voice.room_io import RoomInputOptions
-from livekit.plugins import cartesia, deepgram, openai, silero
+from livekit.plugins import cartesia, deepgram, silero
 
-# logger
+# from livekit.plugins import noise_cancellation
+
+# This example demonstrates a multi-agent system where tasks are delegated to sub-agents
+# based on the user's request.
+#
+# The user is initially connected to a greeter, and depending on their need, the call is
+# handed off to other agents that could help with the more specific tasks.
+# This helps to keep each agent focused on the task at hand, and also reduces costs
+# since only a subset of the tools are used at any given time.
+
+
 logger = logging.getLogger("restaurant-example")
 logger.setLevel(logging.INFO)
 
 load_dotenv()
 
-# voices config (cartesia voice ids)
 voices = {
     "greeter": "794f9389-aac1-45b6-b726-9d9369183238",
     "reservation": "156fb8d2-335b-4950-9cb3-a2d33befec77",
@@ -33,7 +38,6 @@ voices = {
 }
 
 
-# ------------- User data (do NOT store CVV) -------------
 @dataclass
 class UserData:
     customer_name: Optional[str] = None
@@ -41,47 +45,53 @@ class UserData:
 
     reservation_time: Optional[str] = None
 
-    order: Optional[List[str]] = None
+    order: Optional[list[str]] = None
 
-    # store only masked/last4, never full PAN or CVV
-    card_last4: Optional[str] = None
-    card_masked: Optional[str] = None  # e.g. "**** **** **** 1234"
+    customer_credit_card: Optional[str] = None
+    customer_credit_card_expiry: Optional[str] = None
+    customer_credit_card_cvv: Optional[str] = None
 
     expense: Optional[float] = None
     checked_out: Optional[bool] = None
 
-    agents: Dict[str, Agent] = field(default_factory=dict)
+    agents: dict[str, Agent] = field(default_factory=dict)
     prev_agent: Optional[Agent] = None
 
     def summarize(self) -> str:
-        """Return a short YAML summary — redact sensitive fields."""
         data = {
             "customer_name": self.customer_name or "unknown",
             "customer_phone": self.customer_phone or "unknown",
             "reservation_time": self.reservation_time or "unknown",
             "order": self.order or "unknown",
-            "card_last4": self.card_last4 or "none",
+            "credit_card": {
+                "number": self.customer_credit_card or "unknown",
+                "expiry": self.customer_credit_card_expiry or "unknown",
+                "cvv": self.customer_credit_card_cvv or "unknown",
+            }
+            if self.customer_credit_card
+            else None,
             "expense": self.expense or "unknown",
             "checked_out": self.checked_out or False,
         }
-        
+        # summarize in yaml performs better than json
         return yaml.dump(data)
 
 
-# alias for run context type
 RunContext_T = RunContext[UserData]
 
 
-# ------------- helper function tools -------------
+# common functions
+
+
 @function_tool()
 async def update_name(
     name: Annotated[str, Field(description="The customer's name")],
     context: RunContext_T,
 ) -> str:
-    
+    """Called when the user provides their name.
+    Confirm the spelling with the user before calling the function."""
     userdata = context.userdata
     userdata.customer_name = name
-    logger.info("update_name: %s", name)
     return f"The name is updated to {name}"
 
 
@@ -90,30 +100,30 @@ async def update_phone(
     phone: Annotated[str, Field(description="The customer's phone number")],
     context: RunContext_T,
 ) -> str:
-    
+    """Called when the user provides their phone number.
+    Confirm the spelling with the user before calling the function."""
     userdata = context.userdata
     userdata.customer_phone = phone
-    logger.info("update_phone: %s", phone)
     return f"The phone number is updated to {phone}"
 
 
 @function_tool()
-async def to_greeter(context: RunContext_T) -> Union[Agent, Tuple[Agent, str]]:
-    """Route to the greeter agent."""
-    curr_agent = context.session.current_agent
+async def to_greeter(context: RunContext_T) -> Agent:
+    """Called when user asks any unrelated questions or requests
+    any other services not in your job description."""
+    curr_agent: BaseAgent = context.session.current_agent
     return await curr_agent._transfer_to_agent("greeter", context)
 
 
-# ------------- BaseAgent with context merging -------------
 class BaseAgent(Agent):
     async def on_enter(self) -> None:
         agent_name = self.__class__.__name__
-        logger.info("entering task %s", agent_name)
+        logger.info(f"entering task {agent_name}")
 
         userdata: UserData = self.session.userdata
         chat_ctx = self.chat_ctx.copy()
 
-        # merge truncated previous agent chat if available
+        # add the previous agent's chat history to the current agent
         if isinstance(userdata.prev_agent, Agent):
             truncated_chat_ctx = userdata.prev_agent.chat_ctx.copy(
                 exclude_instructions=True, exclude_function_call=False
@@ -122,81 +132,60 @@ class BaseAgent(Agent):
             items_copy = [item for item in truncated_chat_ctx.items if item.id not in existing_ids]
             chat_ctx.items.extend(items_copy)
 
-        # add system instructions containing a redacted user summary
+        # add an instructions including the user data as assistant message
         chat_ctx.add_message(
-            role="system",
+            role="system",  # role=system works for OpenAI's LLM and Realtime API
             content=f"You are {agent_name} agent. Current user data is {userdata.summarize()}",
         )
         await self.update_chat_ctx(chat_ctx)
-        # generate an initial reply (non-blocking)
         self.session.generate_reply(tool_choice="none")
 
-    async def _transfer_to_agent(self, name: str, context: RunContext_T) -> Tuple[Agent, str]:
+    async def _transfer_to_agent(self, name: str, context: RunContext_T) -> tuple[Agent, str]:
         userdata = context.userdata
         current_agent = context.session.current_agent
-        next_agent = userdata.agents.get(name)
-        
+        next_agent = userdata.agents[name]
         userdata.prev_agent = current_agent
-        
+
         return next_agent, f"Transferring to {name}."
 
 
-# ------------- agent implementations -------------
 class Greeter(BaseAgent):
     def __init__(self, menu: str) -> None:
-        # LLm initialization may be heavy; wrap in try/catch and fallback
-        try:
-            llm_instance = GroqLLM(model="llama-3.1-70b-versatile")
-        except Exception as e:
-            logger.warning("GroqLLM init failed, falling back to OpenAI: %s", e)
-            try:
-                # Use OpenAI adapter if available (lighter)
-                llm_instance = openai.OpenAIModel()  # depends on plugin availability
-            except Exception as e2:
-                logger.error("Fallback LLM init failed: %s", e2)
-                llm_instance = None
-
-        # TTS: cartesia preferred; fallback to openai.realtime if needed
-        try:
-            tts_instance = cartesia.TTS(voice=voices["greeter"])
-        except Exception:
-            logger.warning("Cartesia TTS not available for greeter; using default TTS")
-            tts_instance = None
-
         super().__init__(
             instructions=(
                 f"You are a friendly restaurant receptionist. The menu is: {menu}\n"
                 "Your jobs are to greet the caller and understand if they want to "
                 "make a reservation or order takeaway. Guide them to the right agent using tools."
             ),
-            llm=llm_instance,
-            tts=tts_instance,
+            llm=GroqLLM(model="llama-3.1-70b-versatile"),
+            tts=cartesia.TTS(voice=voices["greeter"]),
         )
         self.menu = menu
 
     @function_tool()
-    async def to_reservation(self, context: RunContext_T) -> Tuple[Agent, str]:
+    async def to_reservation(self, context: RunContext_T) -> tuple[Agent, str]:
+        """Called when user wants to make or update a reservation.
+        This function handles transitioning to the reservation agent
+        who will collect the necessary details like reservation time,
+        customer name and phone number."""
         return await self._transfer_to_agent("reservation", context)
 
     @function_tool()
-    async def to_takeaway(self, context: RunContext_T) -> Tuple[Agent, str]:
+    async def to_takeaway(self, context: RunContext_T) -> tuple[Agent, str]:
+        """Called when the user wants to place a takeaway order.
+        This includes handling orders for pickup, delivery, or when the user wants to
+        proceed to checkout with their existing order."""
         return await self._transfer_to_agent("takeaway", context)
 
 
 class Reservation(BaseAgent):
     def __init__(self) -> None:
-        try:
-            tts_instance = cartesia.TTS(voice=voices["reservation"])
-        except Exception:
-            logger.warning("Cartesia reservation TTS init failed")
-            tts_instance = None
-
         super().__init__(
             instructions="You are a reservation agent at a restaurant. Your jobs are to ask for "
             "the reservation time, then customer's name, and phone number. Then "
             "confirm the reservation details with the customer.",
             tools=[update_name, update_phone, to_greeter],
-            tts=tts_instance,
+            tts=cartesia.TTS(voice=voices["reservation"]),
         )
 
     @function_tool()
@@ -205,31 +194,27 @@ class Reservation(BaseAgent):
         time: Annotated[str, Field(description="The reservation time")],
         context: RunContext_T,
     ) -> str:
-        
+        """Called when the user provides their reservation time.
+        Confirm the time with the user before calling the function."""
         userdata = context.userdata
         userdata.reservation_time = time
         return f"The reservation time is updated to {time}"
 
     @function_tool()
-    async def confirm_reservation(self, context: RunContext_T) -> Union[str, Tuple[Agent, str]]:
+    async def confirm_reservation(self, context: RunContext_T) -> str | tuple[Agent, str]:
+        """Called when the user confirms the reservation."""
         userdata = context.userdata
         if not userdata.customer_name or not userdata.customer_phone:
             return "Please provide your name and phone number first."
-        
+
         if not userdata.reservation_time:
             return "Please provide reservation time first."
-        
+
         return await self._transfer_to_agent("greeter", context)
 
 
 class Takeaway(BaseAgent):
     def __init__(self, menu: str) -> None:
-        try:
-            tts_instance = cartesia.TTS(voice=voices["takeaway"])
-        except Exception:
-            logger.warning("Cartesia takeaway TTS init failed")
-            tts_instance = None
-
         super().__init__(
             instructions=(
                 f"Your are a takeaway agent that takes orders from the customer. "
@@ -237,46 +222,41 @@ class Takeaway(BaseAgent):
                 "Clarify special requests and confirm the order with the customer."
             ),
             tools=[to_greeter],
-            tts=tts_instance,
+            tts=cartesia.TTS(voice=voices["takeaway"]),
         )
 
     @function_tool()
     async def update_order(
         self,
-        items: Annotated[List[str], Field(description="The items of the full order")],
+        items: Annotated[list[str], Field(description="The items of the full order")],
         context: RunContext_T,
     ) -> str:
-        
+        """Called when the user create or update their order."""
         userdata = context.userdata
         userdata.order = items
         return f"The order is updated to {items}"
 
     @function_tool()
-    async def to_checkout(self, context: RunContext_T) -> Union[str, Tuple[Agent, str]]:
+    async def to_checkout(self, context: RunContext_T) -> str | tuple[Agent, str]:
+        """Called when the user confirms the order."""
         userdata = context.userdata
         if not userdata.order:
             return "No takeaway order found. Please make an order first."
-        
+
         return await self._transfer_to_agent("checkout", context)
 
 
 class Checkout(BaseAgent):
     def __init__(self, menu: str) -> None:
-        try:
-            tts_instance = cartesia.TTS(voice=voices["checkout"])
-        except Exception:
-            logger.warning("Cartesia checkout TTS init failed")
-            tts_instance = None
-
         super().__init__(
             instructions=(
                 f"You are a checkout agent at a restaurant. The menu is: {menu}\n"
                 "Your are responsible for confirming the expense of the "
                 "order and then collecting customer's name, phone number and credit card "
-                "information. Do NOT store CVV. Store only last4 and masked value."
+                "information, including the card number, expiry date, and CVV step by step."
             ),
             tools=[update_name, update_phone, to_greeter],
-            tts=tts_instance,
+            tts=cartesia.TTS(voice=voices["checkout"]),
         )
 
     @function_tool()
@@ -285,7 +265,7 @@ class Checkout(BaseAgent):
         expense: Annotated[float, Field(description="The expense of the order")],
         context: RunContext_T,
     ) -> str:
-        
+        """Called when the user confirms the expense."""
         userdata = context.userdata
         userdata.expense = expense
         return f"The expense is confirmed to be {expense}"
@@ -295,45 +275,40 @@ class Checkout(BaseAgent):
         self,
         number: Annotated[str, Field(description="The credit card number")],
         expiry: Annotated[str, Field(description="The expiry date of the credit card")],
-        cvv: Annotated[Optional[str], Field(description="The CVV of the credit card (do not store)")] = None,
-        context: RunContext_T = None,
+        cvv: Annotated[str, Field(description="The CVV of the credit card")],
+        context: RunContext_T,
     ) -> str:
-        """
-        Store only masked/last4 and do NOT persist CVV.
-        Prefer integrating a PCI-compliant payment gateway for real payments.
-        """
+        """Called when the user provides their credit card number, expiry date, and CVV.
+        Confirm the spelling with the user before calling the function."""
         userdata = context.userdata
-        if number and len(number) >= 4:
-            last4 = number[-4:]
-            userdata.card_last4 = last4
-            userdata.card_masked = ("*" * (len(number) - 4)) + last4
-        else:
-            userdata.card_last4 = None
-            userdata.card_masked = None
-
-        # Do NOT keep CVV
-        logger.info("Received credit card info for user; stored masked PAN ending %s", userdata.card_last4)
-        return f"Received card ending with {userdata.card_last4}"
+        userdata.customer_credit_card = number
+        userdata.customer_credit_card_expiry = expiry
+        userdata.customer_credit_card_cvv = cvv
+        return f"The credit card number is updated to {number}"
 
     @function_tool()
-    async def confirm_checkout(self, context: RunContext_T) -> Union[str, Tuple[Agent, str]]:
+    async def confirm_checkout(self, context: RunContext_T) -> str | tuple[Agent, str]:
+        """Called when the user confirms the checkout."""
         userdata = context.userdata
         if not userdata.expense:
             return "Please confirm the expense first."
 
-        if not userdata.card_last4:
-            return "Please provide card info first."
+        if (
+            not userdata.customer_credit_card
+            or not userdata.customer_credit_card_expiry
+            or not userdata.customer_credit_card_cvv
+        ):
+            return "Please provide the credit card information first."
 
         userdata.checked_out = True
-        # After successful checkout, hand back to greeter
         return await to_greeter(context)
 
     @function_tool()
-    async def to_takeaway(self, context: RunContext_T) -> Tuple[Agent, str]:
+    async def to_takeaway(self, context: RunContext_T) -> tuple[Agent, str]:
+        """Called when the user wants to update their order."""
         return await self._transfer_to_agent("takeaway", context)
 
 
-# ------------- entrypoint -------------
 async def entrypoint(ctx: JobContext):
     menu = "Pizza: $10, Salad: $5, Ice Cream: $3, Coffee: $2"
     userdata = UserData()
@@ -345,56 +320,27 @@ async def entrypoint(ctx: JobContext):
             "checkout": Checkout(menu),
         }
     )
-
-    # Safe init of AgentSession components: use try/except so worker doesn't crash on missing libs
-    try:
-        stt_impl = deepgram.STT()
-    except Exception as e:
-        logger.warning("Deepgram STT init failed: %s. Falling back to None.", e)
-        stt_impl = None
-
-    # LLm instance: we already attempted to init inside Greeter for safer fallback,
-    # but here we still provide a default for the session (None allowed).
-    try:
-        default_llm = GroqLLM(model="llama-3.1-70b-versatile")
-    except Exception as e:
-        logger.warning("GroqLLM init at session-level failed: %s. Proceeding with None LLM (agents may set their own).", e)
-        default_llm = None
-
-    try:
-        tts_impl_default = cartesia.TTS()
-    except Exception as e:
-        logger.warning("Cartesia global TTS init failed: %s. Proceeding with None TTS.", e)
-        tts_impl_default = None
-
-    try:
-        vad_impl = silero.VAD.load()
-    except Exception as e:
-        logger.warning("Silero VAD load failed: %s. Proceeding with None VAD.", e)
-        vad_impl = None
-
     session = AgentSession[UserData](
         userdata=userdata,
-        stt=stt_impl,
-        llm=default_llm,
-        tts=tts_impl_default,
-        vad=vad_impl,
+        stt=deepgram.STT(),
+        llm=GroqLLM(model="llama-3.1-70b-versatile"),
+        tts=cartesia.TTS(),
+        vad=silero.VAD.load(),
         max_tool_steps=5,
-    
+        # to use realtime model, replace the stt, llm, tts and vad with the following
+        # llm=openai.realtime.RealtimeModel(voice="alloy"),
     )
 
-    # start session and join LiveKit room
-    try:
-        await session.start(
-            agent=userdata.agents["greeter"],
-            room=ctx.room,
-            room_input_options=RoomInputOptions(),
-        )
-    except Exception as e:
-        logger.exception("Failed to start AgentSession: %s", e)
-        raise
+    await session.start(
+        agent=userdata.agents["greeter"],
+        room=ctx.room,
+        room_input_options=RoomInputOptions(
+            # noise_cancellation=noise_cancellation.BVC(),
+        ),
+    )
+
+    # await agent.say("Welcome to our restaurant! How may I assist you today?")
 
 
-# CLI run when file invoked directly
 if __name__ == "__main__":
     cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint))
