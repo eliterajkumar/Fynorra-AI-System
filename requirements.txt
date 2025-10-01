@@ -7,18 +7,23 @@ PyJWT
 pydantic
 PyYAML
 
-# LiveKit agents & SDKs
+# LiveKit core + agents
+livekit
 livekit-agents
-livekit-server-sdk
+livekit-api
 
-# Voice / AI plugins
+# LiveKit plugins (Deepgram plugin for agents)
+livekit-plugins-deepgram
+
+# Voice/AI libraries & SDKs
 cartesia
 deepgram-sdk
 silero
+silero-vad
+
+# LLM / provider SDKs
+groq
 openai
 
-# If using Groq adapter
-groq
-
-# Optional: if using async web requests internally
+# Helpers / async libs
 aiohttp
