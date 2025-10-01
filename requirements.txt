@@ -1,9 +1,24 @@
 fastapi
 uvicorn
+httpx
 python-dotenv
 redis
-httpx
-pyjwt
+PyJWT
+pydantic
+PyYAML
+
+# LiveKit agents & SDKs
 livekit-agents
+livekit-server-sdk
+
+# Voice / AI plugins
+cartesia
 deepgram-sdk
-# plus any SDKs you use: cartesia, openai etc.
+silero
+openai
+
+# If using Groq adapter
+groq
+
+# Optional: if using async web requests internally
+aiohttp
