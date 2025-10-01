@@ -5,6 +5,9 @@ PyYAML
 redis
 httpx
 pyjwt
+livekit-plugins-cartesia
+livekit-plugins-deepgram
+livekit-plugins-silero
 livekit-agents
 deepgram-sdk
 # plus any SDKs you use: cartesia, openai etc.
