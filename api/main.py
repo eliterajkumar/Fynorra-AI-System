@@ -6,6 +6,7 @@ import uuid
 import time
 import json
 import logging
+import threading
 from datetime import datetime
 from typing import Optional
 
@@ -36,7 +37,6 @@ LIVEKIT_API_SECRET = os.getenv("LIVEKIT_API_SECRET")
 REDIS_URL = os.getenv("REDIS_URL", "").strip()  # if empty -> no redis
 
 # If you want the server to refuse to start when LiveKit creds missing, keep this check.
-# Otherwise you can relax it for local dev. I'm keeping it so token-generation only runs with keys.
 if not (LIVEKIT_URL and LIVEKIT_API_KEY and LIVEKIT_API_SECRET):
     logger.error("Missing LiveKit env variables. Please set LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET.")
     raise RuntimeError("Missing LiveKit env variables")
@@ -69,7 +69,6 @@ else:
 app = FastAPI(title="AI Voice Backend")
 
 # allow frontend origins to call — adjust allowed origins in production
-# Add your deployed frontend origin to this list when moving to prod.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -150,7 +149,6 @@ def generate_join_token(identity: str, room: str, ttl_seconds: int = 300) -> str
         },
     }
     token = jwt.encode(payload, LIVEKIT_API_SECRET, algorithm="HS256")
-    # PyJWT returns str in modern versions
     return token if isinstance(token, str) else token.decode("utf-8")
 
 # ----- session endpoints -----
@@ -226,6 +224,69 @@ if voice_router:
     logger.info("voice router included")
 else:
     logger.info("voice router not found — /voice/stream not registered")
+
+
+# ---------------------------
+# Worker-in-process helper
+# ---------------------------
+# This block will start the agent worker in a background thread *if* RUN_WORKER_IN_PROCESS env is true.
+# It imports the agent entrypoint lazily inside the thread to avoid heavy imports at web startup.
+_worker_thread: threading.Thread | None = None
+_worker_stop = False
+
+def _run_agent_worker_loop():
+    global _worker_stop
+    try:
+        # import inside thread to avoid heavy startup cost for the web-server
+        from agents.restaurant import entrypoint  # adjust if your entrypoint lives elsewhere
+        from livekit.agents import cli, WorkerOptions
+    except Exception as e:
+        logger.exception("Failed to import agent entrypoint or livekit libs in worker thread: %s", e)
+        return
+
+    # simple restart loop on crash (with backoff)
+    while not _worker_stop:
+        try:
+            logger.info("Starting agent worker (in-process). This will block until worker exits.")
+            cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint))
+            # if cli.run_app returns normally, break loop
+            logger.info("Agent worker returned from cli.run_app (normal exit).")
+            break
+        except Exception as e:
+            logger.exception("Agent worker crashed, will retry in 5s: %s", e)
+            for _ in range(5):
+                if _worker_stop:
+                    break
+                time.sleep(1)
+    logger.info("Worker loop exiting.")
+
+@app.on_event("startup")
+async def _startup_start_worker():
+    global _worker_thread, _worker_stop
+    run_flag = os.getenv("RUN_WORKER_IN_PROCESS", "false").lower()
+    if run_flag not in ("1", "true", "yes"):
+        logger.info("RUN_WORKER_IN_PROCESS not enabled — not starting worker in-process.")
+        return
+
+    # Safety: ensure uvicorn configured with single worker in start command (--workers 1)
+    logger.info("RUN_WORKER_IN_PROCESS enabled — starting background worker thread.")
+    _worker_stop = False
+    if _worker_thread is None or not _worker_thread.is_alive():
+        _worker_thread = threading.Thread(target=_run_agent_worker_loop, name="agent-worker-thread", daemon=True)
+        _worker_thread.start()
+        logger.info("Agent worker thread started.")
+
+@app.on_event("shutdown")
+async def _shutdown_stop_worker():
+    global _worker_thread, _worker_stop
+    _worker_stop = True
+    if _worker_thread and _worker_thread.is_alive():
+        logger.info("Signaling worker thread to stop (graceful). Waiting up to 10s.")
+        _worker_thread.join(timeout=10)
+        if _worker_thread.is_alive():
+            logger.warning("Worker thread did not stop within timeout; process exit will terminate it.")
+    else:
+        logger.info("Worker thread not running or already stopped.")
 
 # If you also run the worker from the same repo with `python api/main.py`,
 # keep worker startup separate (your earlier worker run uses livekit.agents.cli)
