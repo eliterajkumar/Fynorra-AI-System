@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+python-dotenv
+redis
+httpx
+pyjwt
+livekit-agents
+deepgram-sdk
+# plus any SDKs you use: cartesia, openai etc.
