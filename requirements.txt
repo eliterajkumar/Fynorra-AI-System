@@ -1,13 +1,18 @@
-fastapi
-uvicorn
+elevenlabs
 python-dotenv
-PyYAML
-redis
-httpx
-pyjwt
-livekit-plugins-cartesia
-livekit-plugins-deepgram
-livekit-plugins-silero
-livekit-agents
-deepgram-sdk
-# plus any SDKs you use: cartesia, openai etc.
+fastrtc
+loguru
+langchain-community
+langchain-ollama
+langgraph
+fastrtc[vad]
+soundfile
+litellm
+groq
+espeakng-loader
+phonemizer-fork
+# LlamaIndex dependencies
+llama-index
+llama-index-llms-litellm
+google-auth
+

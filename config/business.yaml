@@ -1,0 +1,236 @@
+# config/business.yaml
+company_profile:
+  company_name: "FYNORRA AI SOLUTIONS PRIVATE LIMITED"
+  common_name: "Fynorra AI Solutions"
+  incorporation_date: "2025-04-23"
+  cin: "U62099DL2025PTC446969"
+  registered_address: "H No 101A, Deep Enclave, Gali No 8, Vikas Nagar, Uttam Nagar West, Delhi, India, 110059"
+  headquarters_city_country: "Delhi, India"
+  authorized_capital_inr: 100000
+  paid_up_capital_inr: 10000
+  directors:
+    - "Rajkumar"
+    - "Kishore Sharma"
+  founder_public_names:
+    - "Rajkumar"
+  alternate_public_references:
+    - "Daniel David (publicly shown on some profiles)"
+  employees_estimate_public: "2-9 (per public listings)"
+  status: "Active (public registry)"
+  business_activity: "Other information technology and computer service activities n.e.c. (AI solutions, chatbots, LLM services, custom software)"
+  core_services_short:
+    - "AI Chatbots & Voice AI"
+    - "Document Processing & Automation"
+    - "CRM Automation & Integrations"
+    - "AI Content Generation"
+    - "AI Dashboards & Predictive Analytics"
+    - "Custom Software Development"
+    - "Managed IT & Server Services"
+  unique_model_statement: >
+    Fynorra ka majority workflow AI automation aur intelligent AI agents ke through operate hota hai —
+    client onboarding, support, and many delivery workflows are handled or augmented by AI agents.
+  public_profiles:
+    indiafilings: "https://www.indiafilings.com/search/fynorra-ai-solutions-private-limited-cin-U62099DL2025PTC446969"
+    falconebiz: "https://www.falconebiz.com/company/FYNORRA-AI-SOLUTIONS-PRIVATE-LIMITED-U62099DL2025PTC446969"
+    clutch: "https://clutch.co/profile/fynorra-ai-solutions"
+    upwork: "https://www.upwork.com/"
+  contact:
+    website: ""
+    email: ""
+    phone: ""
+  source_type: "public_registry_and_marketing_listings"
+  verified: false
+  last_updated: "2025-09-25"
+  notes_and_caveats: >
+    Public records confirm incorporation date, CIN, address and listed directors.
+    Some public profiles show alternate names; employee counts are estimated.
+    Do not present unverified items as confirmed without human verification.
+
+services:
+  - service_id: "S001"
+    service_name: "AI Chatbot (Basic rule-based)"
+    short_description: "Website/WhatsApp chatbot for FAQs and lead capture (no heavy LLM)."
+    deployment_steps: "requirements -> wireframe -> build (dialog flows) -> test -> integrate -> launch"
+    integration_points: "website widget, WhatsApp API, CRM contact sync, analytics"
+    estimated_dev_cost_min_usd: 3000
+    estimated_dev_cost_max_usd: 15000
+    estimated_monthly_opex_min_usd: 20
+    estimated_monthly_opex_max_usd: 300
+    timeline_days_min: 7
+    timeline_days_max: 21
+    typical_team: "1 dev, 1 QA, 1 PM (part-time)"
+    third_party_costs: "Chat platform fees, hosting, CRM connector fees"
+    sales_pitch: "Reduce missed leads & answer FAQs 24/7; fast ROI via captured leads."
+    risk_and_mitigation: "Poor UX -> mitigate with a short discovery + 2 UX rounds."
+
+  - service_id: "S002"
+    service_name: "AI Chatbot (RAG + LLM)"
+    short_description: "Retrieval-augmented chatbot using embeddings + LLM for accurate, contextual answers."
+    deployment_steps: "data collection -> embeddings -> vector DB -> RAG pipeline -> LLM integration -> test -> launch"
+    integration_points: "website widget, WhatsApp, CRM, knowledge base, support tickets"
+    estimated_dev_cost_min_usd: 15000
+    estimated_dev_cost_max_usd: 150000
+    estimated_monthly_opex_min_usd: 200
+    estimated_monthly_opex_max_usd: 10000
+    timeline_days_min: 21
+    timeline_days_max: 90
+    typical_team: "2 devs, 1 ML engineer, 1 QA, 1 PM"
+    third_party_costs: "LLM API (OpenAI/Azure), vector DB (Pinecone/Qdrant), hosting, embedding costs"
+    sales_pitch: "Context-aware answers from your docs — fewer escalations, higher conversions."
+    risk_and_mitigation: "Hallucinations -> guardrails + verification & human-in-loop review."
+
+  - service_id: "S003"
+    service_name: "Voice AI / Call Automation"
+    short_description: "AI-powered voice agents for call centers (IVR automation + conversational voice)."
+    deployment_steps: "call-flow design -> speech model selection -> integration with telephony -> testing -> rollout"
+    integration_points: "Telephony provider, CRM, ticketing, analytics"
+    estimated_dev_cost_min_usd: 20000
+    estimated_dev_cost_max_usd: 100000
+    estimated_monthly_opex_min_usd: 200
+    estimated_monthly_opex_max_usd: 5000
+    timeline_days_min: 30
+    timeline_days_max: 90
+    typical_team: "1-2 devs, 1 voice engineer, 1 QA, 1 PM"
+    third_party_costs: "Telephony minutes, STT/TTS API, model inference costs"
+    sales_pitch: "Cut call handling costs and improve first-call resolution."
+    risk_and_mitigation: "IVR misrouting -> thorough user testing and fallback human handoff."
+
+  - service_id: "S004"
+    service_name: "Document Processing (OCR + Automation)"
+    short_description: "Invoice, contract, and form extraction + automation pipelines."
+    deployment_steps: "sample docs -> label -> model selection -> pipeline build -> integrate -> QA"
+    integration_points: "ERP/Accounting systems, CRM, storage (S3), workflow engine"
+    estimated_dev_cost_min_usd: 10000
+    estimated_dev_cost_max_usd: 80000
+    estimated_monthly_opex_min_usd: 100
+    estimated_monthly_opex_max_usd: 2000
+    timeline_days_min: 14
+    timeline_days_max: 60
+    typical_team: "1 ML engineer, 1 dev, 1 QA"
+    third_party_costs: "OCR API, storage costs, labeling costs if needed"
+    sales_pitch: "Automate invoice & contract handling to speed operations and reduce errors."
+    risk_and_mitigation: "Low accuracy on noisy docs -> iterative labeling & validation."
+
+  - service_id: "S005"
+    service_name: "CRM Automation & Integrations"
+    short_description: "Automate lead routing, enrichment, and CRM workflows."
+    deployment_steps: "map fields -> build integration connectors -> test -> deploy -> monitor"
+    integration_points: "HubSpot/Zoho/Salesforce, Mail servers, website, analytics"
+    estimated_dev_cost_min_usd: 8000
+    estimated_dev_cost_max_usd: 40000
+    estimated_monthly_opex_min_usd: 50
+    estimated_monthly_opex_max_usd: 1000
+    timeline_days_min: 7
+    timeline_days_max: 30
+    typical_team: "1 integration dev, 1 PM"
+    third_party_costs: "CRM subscription, middleware (Zapier/Make) fees"
+    sales_pitch: "Faster lead follow-up and fewer manual handoffs."
+    risk_and_mitigation: "Data mismatches -> field mapping checklist + test plan."
+
+  - service_id: "S006"
+    service_name: "AI Content Generation (blogs, ads, scripts)"
+    short_description: "Automated content creation pipelines with templates & tuning."
+    deployment_steps: "content templates -> model choice -> prompt engineering -> workflow -> QA"
+    integration_points: "CMS, marketing stack, ad platforms, analytics"
+    estimated_dev_cost_min_usd: 5000
+    estimated_dev_cost_max_usd: 40000
+    estimated_monthly_opex_min_usd: 100
+    estimated_monthly_opex_max_usd: 2000
+    timeline_days_min: 7
+    timeline_days_max: 45
+    typical_team: "1 dev, 1 marketer, 1 QA"
+    third_party_costs: "LLM API usage, image/video tools (if needed)"
+    sales_pitch: "Scale content creation while keeping brand voice consistent."
+    risk_and_mitigation: "Low-quality output -> human editor + style guide + few-shot prompts."
+
+faqs:
+  - id: "Q1"
+    text: |
+      Q: What is Fynorra?
+      A: Fynorra is an AI-first consulting firm that builds custom AI assistants, chatbot sales teams, and integrates AI into CRM/website to increase leads and automate customer support.
+    metadata:
+      source: "faq"
+  - id: "Q2"
+    text: |
+      Q: Which services does Fynorra offer?
+      A: AI chatbots, CRM/CMS integration, Cloud & DevOps, custom copilots, AI sales automation and analytics.
+    metadata:
+      source: "faq"
+  - id: "Q3"
+    text: |
+      Q: How long does integration take?
+      A: Typical small-site integration takes 3–7 business days; full CRM integration usually requires 2–4 weeks depending on complexity.
+    metadata:
+      source: "faq"
+  - id: "Q4"
+    text: |
+      Q: What pricing plans do you have?
+      A: Starter plans begin around ₹5,000/month. Exact pricing is customized based on your needs — our team will share a tailored proposal.
+    metadata:
+      source: "faq"
+  - id: "Q5"
+    text: |
+      Q: Do you provide multilingual bots?
+      A: Yes — Hindi, English, and regional languages; we customize tone per audience.
+    metadata:
+      source: "faq"
+  - id: "Q6"
+    text: |
+      Q: Can you handle payments and invoicing?
+      A: Yes — we integrate with major payment gateways and automate invoice generation and reminders.
+    metadata:
+      source: "faq"
+  - id: "Q7"
+    text: |
+      Q: How do I book a demo?
+      A: 👉 You can book a 20-minute demo at fynorra.ai/contact, or reply 'Demo' and our team will reach out within 48 hours.
+    metadata:
+      source: "faq"
+  - id: "Q8"
+    text: |
+      Q: Do you offer free trials?
+      A: We offer a 7-day pilot for qualified clients; eligibility is confirmed after a short discovery call.
+    metadata:
+      source: "faq"
+  - id: "Q9"
+    text: |
+      Q: How secure is my data?
+      A: We use encryption in-transit & at-rest, and support NDA/DSA, GDPR, and HIPAA (for healthcare clients).
+    metadata:
+      source: "faq"
+
+finetune_formatted:
+  - messages:
+      - role: "system"
+        content: "You are Fynorra AI Assistant. Answer concisely and include a direct action step."
+      - role: "user"
+        content: "What is Fynorra?"
+      - role: "assistant"
+        content: "Fynorra is an AI-first consulting firm that builds custom AI assistants, chatbot sales teams, and integrates AI into CRM/website to increase leads and automate customer support."
+  - messages:
+      - role: "system"
+        content: "You are Fynorra AI Assistant. Answer concisely and include a direct action step."
+      - role: "user"
+        content: "Which services does Fynorra offer?"
+      - role: "assistant"
+        content: "AI chatbots, CRM/CMS integration, Cloud & DevOps, custom copilots, AI sales automation and analytics."
+
+rag_formatted:
+  - text: |
+      Q: What is Fynorra?
+      A: Fynorra is an AI-first consulting firm that builds custom AI assistants and sales automation tools.
+    metadata:
+      source: "faq"
+      id: "Q1"
+  - text: |
+      Q: How do I book a demo?
+      A: You can reply 'Demo' or visit fynorra.ai/contact; our team will reach out within 48 hours.
+    metadata:
+      source: "faq"
+      id: "Q7"
+
+company_notes:
+  founder_override: "Rajkumar"   # agent should return 'Rajkumar' when asked who the founder/owner is
+  last_verified: "2025-09-25"
+  verification_notes: "Public records used; some public profiles show alternate names. Verify with company before high-stakes use."
+
