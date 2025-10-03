@@ -31,7 +31,7 @@ from fastrtc import (
 
 
 # allow only your frontend origin in production; during dev you can use "*"
-frontend_origin = os.environ.get("*")  # set to e.g. https://your-site.com in prod
+frontend_origin = os.environ.get("https://fynorra.com""*")  # set to e.g. https://your-site.com in prod
 
 # ---- FastAPI app ----
 app = FastAPI(title="Fynorra Demo Starter")
