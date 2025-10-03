@@ -20,7 +20,7 @@ import yaml
 from pathlib import Path
 from loguru import logger
 from dotenv import load_dotenv
-from tools.lead_store import lead_store_tool
+
 
 # LlamaIndex ReActAgent (if installed). We only use it for LLM fallback.
 try:
@@ -32,7 +32,7 @@ from llama_index.core.memory import Memory
 from llama_index.core.llms import ChatMessage
 
 from .llm_service import LLMService
-from .tools import get_weather  # optional tool
+# from .tools import get_weather  # optional tool
 
 load_dotenv()
 

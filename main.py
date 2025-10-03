@@ -17,13 +17,13 @@ from pydantic import BaseModel, EmailStr, Field
 import uvicorn
 import soundfile as sf
 import aiofiles
-from src.tools.lead_store import lead_store_tool
+# from src.tools.lead_store import lead_store_tool
 
 from src.speech import SpeechService
 from src.agent import Agent
 from fastrtc import (
     AlgoOptions,
-    ReplyOnPause,
+    ReplyOnPause, 
     Stream,
 )
 
