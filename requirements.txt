@@ -15,4 +15,4 @@ phonemizer-fork
 llama-index
 llama-index-llms-litellm
 google-auth
-
+pydantic[email]
