@@ -18,6 +18,7 @@ import uvicorn
 import soundfile as sf
 import aiofiles
 # from src.tools.lead_store import lead_store_tool
+from fastapi.middleware.cors import CORSMiddleware
 
 from src.speech import SpeechService
 from src.agent import Agent
@@ -25,6 +26,22 @@ from fastrtc import (
     AlgoOptions,
     ReplyOnPause, 
     Stream,
+)
+
+
+
+# allow only your frontend origin in production; during dev you can use "*"
+frontend_origin = os.environ.get("*")  # set to e.g. https://your-site.com in prod
+
+# ---- FastAPI app ----
+app = FastAPI(title="Fynorra Demo Starter")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[frontend_origin] if frontend_origin != "*" else ["*"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["*"],
 )
 
 # load environment variables
@@ -42,9 +59,6 @@ speech_service = SpeechService()
 agent = Agent()
 
 default_voice_id = os.getenv("ELEVENLABS_VOICE_ID", "JBFqnCBsd6RMkjVDRZzb")
-
-# ---- FastAPI app ----
-app = FastAPI(title="Fynorra Demo Starter")
 
 # ---- Models ----
 class StartDemoPayload(BaseModel):
